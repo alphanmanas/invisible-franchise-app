@@ -1,0 +1,480 @@
+import streamlit as st
+import pandas as pd
+
+st.set_page_config(
+    page_title="Invisible Hair Franchising Modeli (Yönetim İçin)",
+    layout="wide"
+)
+
+# =========================================================
+# STYLE
+# =========================================================
+st.markdown("""
+<style>
+    .main {
+        background-color: #f7f9fc;
+    }
+
+    .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+
+    .top-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.20rem;
+    }
+
+    .top-subtitle {
+        font-size: 14px;
+        color: #475569;
+        margin-bottom: 1.20rem;
+    }
+
+    .section-card {
+        background: white;
+        padding: 18px 18px 12px 18px;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        margin-bottom: 16px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 10px;
+    }
+
+    .metric-box {
+        padding: 16px;
+        border-radius: 14px;
+        color: white;
+        margin-bottom: 10px;
+        min-height: 110px;
+    }
+
+    .metric-label {
+        font-size: 13px;
+        opacity: 0.92;
+        margin-bottom: 8px;
+    }
+
+    .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .metric-note {
+        font-size: 12px;
+        opacity: 0.88;
+        margin-top: 8px;
+    }
+
+    .blue-box {
+        background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    }
+
+    .green-box {
+        background: linear-gradient(135deg, #047857, #10b981);
+    }
+
+    .orange-box {
+        background: linear-gradient(135deg, #c2410c, #f97316);
+    }
+
+    .purple-box {
+        background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+    }
+
+    .slate-box {
+        background: linear-gradient(135deg, #334155, #475569);
+    }
+
+    .small-note {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 6px;
+    }
+
+    .status-good {
+        color: #047857;
+        font-weight: 700;
+    }
+
+    .status-bad {
+        color: #b91c1c;
+        font-weight: 700;
+    }
+
+    .status-neutral {
+        color: #92400e;
+        font-weight: 700;
+    }
+
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background-color: #e2e8f0;
+        border-radius: 10px 10px 0 0;
+        padding: 10px 16px;
+        font-weight: 600;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #1d4ed8 !important;
+        color: white !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# HELPERS
+# =========================================================
+def usd(value: float) -> str:
+    return f"${value:,.2f}"
+
+def num(value: float) -> str:
+    return f"{value:,.2f}"
+
+def safe_months(value):
+    if value is None:
+        return "N/A"
+    return f"{value:,.1f}"
+
+# =========================================================
+# HEADER
+# =========================================================
+st.markdown('<div class="top-title">Invisible Hair Franchising Modeli (Yönetim İçin)</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="top-subtitle">Calculated hariç tüm alanlar editable kabul edilmiştir. Hesaplamalar Excel’deki D kolonu mantığına göre yapılmıştır.</div>',
+    unsafe_allow_html=True
+)
+
+# =========================================================
+# SIDEBAR INPUTS
+# =========================================================
+st.sidebar.title("Yönetim Girdileri")
+
+with st.sidebar.expander("Dekorasyon + Kira", expanded=True):
+    store_size_m2 = st.number_input("Dükkanın Büyüklüğü (m2)", min_value=0.0, value=150.0, step=1.0)
+    decoration_cost_per_m2 = st.number_input("Dükkanın Dekorasyon Maliyeti (m2) ($)", min_value=0.0, value=350.0, step=10.0)
+    rent_per_m2 = st.number_input("Dükkanın Kirası (m2) / Aylık ($)", min_value=0.0, value=20.0, step=1.0)
+
+with st.sidebar.expander("İthalat Maliyetleri", expanded=True):
+    import_cost_short = st.number_input("Premium Peruk İthalat Maliyeti - Kısa ($)", min_value=0.0, value=1250.0, step=10.0)
+    import_cost_medium = st.number_input("Premium Peruk İthalat Maliyeti - Medium ($)", min_value=0.0, value=1400.0, step=10.0)
+    import_cost_long = st.number_input("Premium Peruk İthalat Maliyeti - Uzun ($)", min_value=0.0, value=1600.0, step=10.0)
+    import_cost_top_small = st.number_input("Tepelik İthalat Maliyeti - Small ($)", min_value=0.0, value=600.0, step=10.0)
+    import_cost_top_medium = st.number_input("Tepelik İthalat Maliyeti - Medium ($)", min_value=0.0, value=750.0, step=10.0)
+
+with st.sidebar.expander("Satış Fiyatları", expanded=True):
+    sale_price_short = st.number_input("Premium Peruk Satış Fiyatı - Kısa ($)", min_value=0.0, value=3000.0, step=10.0)
+    sale_price_medium = st.number_input("Premium Peruk Satış Fiyatı - Medium ($)", min_value=0.0, value=3500.0, step=10.0)
+    sale_price_long = st.number_input("Premium Peruk Satış Fiyatı - Uzun ($)", min_value=0.0, value=4000.0, step=10.0)
+    sale_price_top_small = st.number_input("Tepelik Satış Fiyatı - Small ($)", min_value=0.0, value=1800.0, step=10.0)
+    sale_price_top_medium = st.number_input("Tepelik Satış Fiyatı - Medium ($)", min_value=0.0, value=2200.0, step=10.0)
+
+with st.sidebar.expander("Aylık Satış Adetleri", expanded=True):
+    qty_short = st.number_input("Premium Peruk Satış Adedi - Kısa", min_value=0.0, value=6.0, step=1.0)
+    qty_medium = st.number_input("Premium Peruk Satış Adedi - Medium", min_value=0.0, value=5.0, step=1.0)
+    qty_long = st.number_input("Premium Peruk Satış Adedi - Uzun", min_value=0.0, value=4.0, step=1.0)
+    qty_top_small = st.number_input("Tepelik Satış Adedi - Small", min_value=0.0, value=4.0, step=1.0)
+    qty_top_medium = st.number_input("Tepelik Satış Adedi - Medium", min_value=0.0, value=3.0, step=1.0)
+
+with st.sidebar.expander("Diğer Yönetim Girdileri", expanded=True):
+    dealer_discount = st.number_input("Bayi İndirimi (%)", min_value=0.0, max_value=100.0, value=30.0, step=1.0) / 100
+    monthly_personnel_other = st.number_input("Aylık Personel Gideri & Sair Giderler ($)", min_value=0.0, value=7000.0, step=100.0)
+    franchise_fee_usd = st.number_input("Franchise Bedeli (USD)", min_value=0.0, value=40000.0, step=1000.0)
+
+# =========================================================
+# CALCULATIONS
+# =========================================================
+gross_sales_before_discount = (
+    (sale_price_short * qty_short) +
+    (sale_price_medium * qty_medium) +
+    (sale_price_long * qty_long) +
+    (sale_price_top_small * qty_top_small) +
+    (sale_price_top_medium * qty_top_medium)
+)
+
+gross_sales_after_discount = gross_sales_before_discount * (1 - dealer_discount)
+monthly_rent_expense = store_size_m2 * rent_per_m2
+monthly_net_income = gross_sales_after_discount - monthly_rent_expense - monthly_personnel_other
+decoration_total = store_size_m2 * decoration_cost_per_m2
+initial_investment_total = franchise_fee_usd + decoration_total
+
+payback_months = None
+if monthly_net_income > 0:
+    payback_months = initial_investment_total / monthly_net_income
+
+# =========================================================
+# STATUS
+# =========================================================
+if monthly_net_income > 0:
+    status_text = "Pozitif"
+    status_class = "status-good"
+elif monthly_net_income == 0:
+    status_text = "Başa Baş"
+    status_class = "status-neutral"
+else:
+    status_text = "Negatif"
+    status_class = "status-bad"
+
+# =========================================================
+# DATAFRAMES
+# =========================================================
+products_df = pd.DataFrame([
+    ["Premium Peruk - Kısa", sale_price_short, import_cost_short, qty_short, sale_price_short - import_cost_short, (sale_price_short - import_cost_short) * qty_short],
+    ["Premium Peruk - Medium", sale_price_medium, import_cost_medium, qty_medium, sale_price_medium - import_cost_medium, (sale_price_medium - import_cost_medium) * qty_medium],
+    ["Premium Peruk - Uzun", sale_price_long, import_cost_long, qty_long, sale_price_long - import_cost_long, (sale_price_long - import_cost_long) * qty_long],
+    ["Tepelik - Small", sale_price_top_small, import_cost_top_small, qty_top_small, sale_price_top_small - import_cost_top_small, (sale_price_top_small - import_cost_top_small) * qty_top_small],
+    ["Tepelik - Medium", sale_price_top_medium, import_cost_top_medium, qty_top_medium, sale_price_top_medium - import_cost_top_medium, (sale_price_top_medium - import_cost_top_medium) * qty_top_medium],
+], columns=[
+    "Ürün",
+    "Satış Fiyatı ($)",
+    "İthalat Maliyeti ($)",
+    "Aylık Adet",
+    "Birim Brüt Kâr ($)",
+    "Aylık Brüt Kâr ($)"
+])
+
+editable_df = pd.DataFrame([
+    ["Dükkanın Büyüklüğü (m2)", store_size_m2, "Editable"],
+    ["Dükkanın Dekorasyon Maliyeti (m2) ($)", decoration_cost_per_m2, "Editable"],
+    ["Dükkanın Kirası (m2) / Aylık ($)", rent_per_m2, "Editable"],
+    ["Premium Peruk İthalat Maliyeti - Kısa ($)", import_cost_short, "Editable"],
+    ["Premium Peruk İthalat Maliyeti - Medium ($)", import_cost_medium, "Editable"],
+    ["Premium Peruk İthalat Maliyeti - Uzun ($)", import_cost_long, "Editable"],
+    ["Tepelik İthalat Maliyeti - Small ($)", import_cost_top_small, "Editable"],
+    ["Tepelik İthalat Maliyeti - Medium ($)", import_cost_top_medium, "Editable"],
+    ["Premium Peruk Satış Fiyatı - Kısa ($)", sale_price_short, "Editable"],
+    ["Premium Peruk Satış Fiyatı - Medium ($)", sale_price_medium, "Editable"],
+    ["Premium Peruk Satış Fiyatı - Uzun ($)", sale_price_long, "Editable"],
+    ["Tepelik Satış Fiyatı - Small ($)", sale_price_top_small, "Editable"],
+    ["Tepelik Satış Fiyatı - Medium ($)", sale_price_top_medium, "Editable"],
+    ["Premium Peruk Satış Adedi - Kısa", qty_short, "Editable"],
+    ["Premium Peruk Satış Adedi - Medium", qty_medium, "Editable"],
+    ["Premium Peruk Satış Adedi - Uzun", qty_long, "Editable"],
+    ["Tepelik Satış Adedi - Small", qty_top_small, "Editable"],
+    ["Tepelik Satış Adedi - Medium", qty_top_medium, "Editable"],
+    ["Bayi İndirimi (%)", dealer_discount * 100, "Editable"],
+    ["Aylık Personel Gideri & Sair Giderler ($)", monthly_personnel_other, "Editable"],
+    ["Franchise Bedeli (USD)", franchise_fee_usd, "Editable"],
+], columns=["Alan", "Değer", "Tip"])
+
+calculated_df = pd.DataFrame([
+    ["Aylık Brüt Kazanç", gross_sales_after_discount, "((Satış Fiyatı x Adet Toplamı) x (1 - Bayi İndirimi))", "Calculated"],
+    ["Aylık Kira Gideri", monthly_rent_expense, "Dükkanın Büyüklüğü x Kira (m2)", "Calculated"],
+    ["Aylık Net Gelir", monthly_net_income, "Aylık Brüt Kazanç - Aylık Kira Gideri - Aylık Personel Gideri & Sair Giderler", "Calculated"],
+    ["Dekorasyon Bedeli", decoration_total, "Dükkanın Büyüklüğü x Dekorasyon Maliyeti (m2)", "Calculated"],
+    ["Yatırımın Geri Dönüşü (Ay)", 0 if payback_months is None else payback_months, "(Franchise Bedeli + Dekorasyon Bedeli) / Aylık Net Gelir", "Calculated"],
+], columns=["Alan", "Değer", "Hesaplama Yöntemi", "Tip"])
+
+summary_df = pd.DataFrame([
+    ["Toplam Aylık Satış Adedi", qty_short + qty_medium + qty_long + qty_top_small + qty_top_medium],
+    ["İndirim Öncesi Toplam Satış", gross_sales_before_discount],
+    ["İndirim Sonrası Aylık Brüt Kazanç", gross_sales_after_discount],
+    ["Aylık Kira Gideri", monthly_rent_expense],
+    ["Aylık Personel + Sair Giderler", monthly_personnel_other],
+    ["Aylık Net Gelir", monthly_net_income],
+    ["Dekorasyon Bedeli", decoration_total],
+    ["Franchise Bedeli", franchise_fee_usd],
+    ["Toplam İlk Yatırım", initial_investment_total],
+], columns=["Gösterge", "Değer"])
+
+# =========================================================
+# KPI CARDS
+# =========================================================
+c1, c2, c3, c4, c5 = st.columns(5)
+
+with c1:
+    st.markdown(f"""
+    <div class="metric-box blue-box">
+        <div class="metric-label">Aylık Brüt Kazanç</div>
+        <div class="metric-value">{usd(gross_sales_after_discount)}</div>
+        <div class="metric-note">Excel D kolonu mantığı</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c2:
+    st.markdown(f"""
+    <div class="metric-box orange-box">
+        <div class="metric-label">Aylık Kira Gideri</div>
+        <div class="metric-value">{usd(monthly_rent_expense)}</div>
+        <div class="metric-note">m2 x kira</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c3:
+    st.markdown(f"""
+    <div class="metric-box green-box">
+        <div class="metric-label">Aylık Net Gelir</div>
+        <div class="metric-value">{usd(monthly_net_income)}</div>
+        <div class="metric-note">Operasyon sonrası sonuç</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c4:
+    st.markdown(f"""
+    <div class="metric-box purple-box">
+        <div class="metric-label">Dekorasyon Bedeli</div>
+        <div class="metric-value">{usd(decoration_total)}</div>
+        <div class="metric-note">m2 x dekorasyon maliyeti</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c5:
+    st.markdown(f"""
+    <div class="metric-box slate-box">
+        <div class="metric-label">Yatırımın Geri Dönüşü</div>
+        <div class="metric-value">{safe_months(payback_months)}</div>
+        <div class="metric-note">Ay bazında payback</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+if monthly_net_income <= 0:
+    st.warning("Aylık Net Gelir sıfırın altında veya sıfıra eşit olduğu için geri dönüş süresi hesaplanamadı.")
+
+st.markdown(
+    f'<div class="small-note">Finansal Durum: <span class="{status_class}">{status_text}</span></div>',
+    unsafe_allow_html=True
+)
+
+st.divider()
+
+# =========================================================
+# TABS
+# =========================================================
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Yönetim Özeti",
+    "Ürün Karlılığı",
+    "Editable / Calculated Alanlar",
+    "Hesaplama Mantığı"
+])
+
+# =========================================================
+# TAB 1
+# =========================================================
+with tab1:
+    left, right = st.columns([1.05, 1])
+
+    with left:
+        st.markdown('<div class="section-card"><div class="section-title">Üst Yönetim Özeti</div>', unsafe_allow_html=True)
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Toplam Aylık Satış Adedi", f"{qty_short + qty_medium + qty_long + qty_top_small + qty_top_medium:,.0f}")
+            st.metric("İndirim Öncesi Toplam Satış", usd(gross_sales_before_discount))
+            st.metric("Toplam İlk Yatırım", usd(initial_investment_total))
+
+        with col_b:
+            st.metric("Bayi İndirimi", f"%{dealer_discount*100:,.1f}")
+            st.metric("Aylık Net Gelir", usd(monthly_net_income))
+            st.metric("Payback (Ay)", safe_months(payback_months))
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with right:
+        st.markdown('<div class="section-card"><div class="section-title">Özet Tablo</div>', unsafe_allow_html=True)
+
+        display_summary_df = summary_df.copy()
+        display_summary_df["Değer"] = display_summary_df.apply(
+            lambda x: f"{x['Değer']:,.0f}" if "Adedi" in x["Gösterge"] else usd(x["Değer"]),
+            axis=1
+        )
+        st.dataframe(display_summary_df, use_container_width=True, hide_index=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# TAB 2
+# =========================================================
+with tab2:
+    st.markdown('<div class="section-card"><div class="section-title">Ürün Bazlı Karlılık Analizi</div>', unsafe_allow_html=True)
+
+    products_display = products_df.copy()
+    for col in ["Satış Fiyatı ($)", "İthalat Maliyeti ($)", "Birim Brüt Kâr ($)", "Aylık Brüt Kâr ($)"]:
+        products_display[col] = products_display[col].apply(lambda x: usd(x))
+    products_display["Aylık Adet"] = products_display["Aylık Adet"].apply(lambda x: f"{x:,.0f}")
+
+    st.dataframe(products_display, use_container_width=True, hide_index=True)
+
+    total_product_gross_profit = products_df["Aylık Brüt Kâr ($)"].sum()
+    st.markdown(
+        f'<div class="small-note">Ürün bazlı toplam aylık brüt kâr: <b>{usd(total_product_gross_profit)}</b></div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# TAB 3
+# =========================================================
+with tab3:
+    left, right = st.columns(2)
+
+    with left:
+        st.markdown('<div class="section-card"><div class="section-title">Editable Alanlar</div>', unsafe_allow_html=True)
+        editable_display = editable_df.copy()
+        editable_display["Değer"] = editable_display.apply(
+            lambda x: f"%{x['Değer']:,.1f}" if x["Alan"] == "Bayi İndirimi (%)"
+            else f"{x['Değer']:,.0f}" if "Adedi" in x["Alan"] or "(m2)" in x["Alan"]
+            else usd(x["Değer"]) if "$" in x["Alan"] or "USD" in x["Alan"]
+            else num(x["Değer"]),
+            axis=1
+        )
+        st.dataframe(editable_display, use_container_width=True, hide_index=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with right:
+        st.markdown('<div class="section-card"><div class="section-title">Calculated Alanlar</div>', unsafe_allow_html=True)
+        calculated_display = calculated_df.copy()
+        calculated_display["Değer"] = calculated_display.apply(
+            lambda x: safe_months(x["Değer"]) if x["Alan"] == "Yatırımın Geri Dönüşü (Ay)" else usd(x["Değer"]),
+            axis=1
+        )
+        st.dataframe(calculated_display, use_container_width=True, hide_index=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# TAB 4
+# =========================================================
+with tab4:
+    st.markdown('<div class="section-card"><div class="section-title">Excel D Kolonu Bazlı Hesaplama Mantığı</div>', unsafe_allow_html=True)
+
+    st.markdown("""
+**1. Editable Mantığı**  
+Calculated olanlar hariç tüm alanlar editable kabul edilmiştir.
+
+**2. Aylık Brüt Kazanç**  
+((Satış Fiyatı x Adet Toplamı) x (1 - Bayi İndirimi))
+
+**3. Aylık Kira Gideri**  
+Dükkanın Büyüklüğü x Dükkanın Kirası (m2) / Aylık
+
+**4. Aylık Net Gelir**  
+Aylık Brüt Kazanç - Aylık Kira Gideri - Aylık Personel Gideri & Sair Giderler
+
+**5. Dekorasyon Bedeli**  
+Dükkanın Büyüklüğü x Dükkanın Dekorasyon Maliyeti (m2)
+
+**6. Yatırımın Geri Dönüşü (Ay)**  
+(Franchise Bedeli + Dekorasyon Bedeli) / Aylık Net Gelir
+    """)
+
+    st.info("Not: Ürün bazlı ithalat maliyetleri kârlılık tablosunda ayrıca gösterilmektedir. Ana KPI hesapları ise Excel’deki D kolonu mantığına sadık kalacak şekilde bırakılmıştır.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
